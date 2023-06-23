@@ -4,7 +4,6 @@ OpenAI
 pywebio
 gunicorn
 Flask>=2.2.2
-openai==0.26.5
 jinja2
 Flask-Session
 Flask[async]

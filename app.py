@@ -39,7 +39,7 @@ def getInitialPrompt(intent: str, isAgent: bool) -> str:
     if intent == "Billing Issues":
         templateSpecifics = "that is having billing issues."
     elif intent == "Military Discount":
-        templateSpecifics = "that is queries about military discount."
+        templateSpecifics = "having queries about military discount."
     elif intent == "Order Status":
         templateSpecifics = "having issue with his order."
     elif intent == "Product Availability":
@@ -51,7 +51,7 @@ def getInitialPrompt(intent: str, isAgent: bool) -> str:
     elif intent == "Issues with Order":
         templateSpecifics = "enquiring the status of their order."
 
-    templateBase = f"{ 'You are an agent in a call center. Given the response of the agent, it is your job to write a better response' if isAgent else 'You are a customer having a call with contact center agent. You generate response for the customer based on the scenario' }.\n\n\
+    templateBase = f"{ 'You are an agent in a call center. Given the response of the agent, it is your job to write a better response for agents last response in a formal way based on the scenario.' if isAgent else 'You are a customer having a call with contact center agent. You generate response for the customer based on the scenario' }.\n\n\
 Scenario: Lets do a quick role play for a customer {templateSpecifics}.\n\n\
 Customer:"
 
@@ -73,7 +73,7 @@ async def customer():
 
         try:
             completion = openai.Completion.create(
-                engine="text-davinci-002",
+                engine="text-davinci-003",
                 prompt=f"{customerTemplate}\n\n",
                 temperature=0.7,
                 max_tokens=100,
