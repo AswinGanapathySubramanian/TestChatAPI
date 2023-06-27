@@ -31,6 +31,10 @@ Session(app)
 
 api_Key=os.getenv("api_Key")
 
+ag=""
+cust=""
+pro=""
+
 openai.api_key=api_Key
 
 #sess={
@@ -119,6 +123,9 @@ async def customer():
             session["promptResponses"] = {session_name:promptResponses}
             session["customerTemplate"] = {session_name:customerTemplate}
             session["agentTemplate"] = {session_name:agentTemplate}
+            ag=agentTemplate
+            cust=customerTemplate
+            pro=promptResponses
             print(session)
             logger.info(session.keys())
             #return jsonify(session)
@@ -154,9 +161,13 @@ async def agent():
     logger.info(f"Data Received as Input: {data}")
     chat = data["chat"]
     #session_name=data["session_name"]
+    
     agentTemplate = session.get("agentTemplate")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
     customerTemplate = session.get("customerTemplate")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
     promptResponses = session.get("promptResponses", "")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
+    agentTemplate=ag
+    customerTemplate=cust
+    promptResponses=pro
 
     prompt = f"{agentTemplate}\n\n{promptResponses} Agent: {chat}\n\nAI:"
     wc = wordCount(chat)
