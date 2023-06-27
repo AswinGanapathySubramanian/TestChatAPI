@@ -3,11 +3,23 @@ from flask_session import Session
 import openai
 import uuid
 import os
+import logging
 
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # replace with your own secret key
 app.config['SESSION_TYPE'] = 'filesystem'
+
+# Initialize the logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)  # Set the desired log level for the handler
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
 
 Session(app)
 
@@ -27,6 +39,7 @@ sess={}
 async def getSession():
     session_name = str(uuid.uuid4())
     sess[session_name] = {"session_id":"123"}
+    logger.info("Session is successfully created")
     return jsonify({"session_name": session_name, "session_data": sess[session_name]})
 
 
@@ -59,8 +72,10 @@ Customer:"
 
 @app.route('/customer', methods=['POST'])
 async def customer():
+    logger.info("Customer api is invoked successfully")
     data=request.json
     print(data)
+    logger.info(f"Data Received as Input: {data}")
     session_name=data["session_name"]
     sessionid=data["session_id"]
     intent = data["intent"]
@@ -89,6 +104,8 @@ async def customer():
             session["agentTemplate"] = agentTemplate
             print(session)
             #return jsonify(session)
+            logger.info("Customer Response Generated Successfully")
+
             return jsonify({ "customer": completion.choices[0].text})
         
         except Exception as e:
@@ -100,7 +117,9 @@ async def customer():
 
 @app.route('/agent', methods=['POST'])
 async def agent():
+    logger.info("Agent Api Invoked successfully")
     data = request.json
+    logger.info(f"Data Received as Input: {data}")
     chat = data["chat"]
     agentTemplate = session.get("agentTemplate")
     customerTemplate = session.get("customerTemplate")
@@ -108,6 +127,8 @@ async def agent():
 
     prompt = f"{agentTemplate}\n\n{promptResponses} Agent: {chat}\n\nAI:"
     wc = wordCount(chat)
+
+    logger.info(f"Prompt to Generate Agents' better way of responding: {prompt}")
 
     try:
         completion =  openai.Completion.create(
@@ -123,6 +144,8 @@ async def agent():
 
         prompt2 = f"{customerTemplate}\n\n{promptResponses} Customer:"
 
+        logger.info(f"Prompt to Generate Customer Response: {prompt2}")
+
         completion2 =  openai.Completion.create(
             model="text-davinci-003",
             prompt=f"{prompt2}\n\n",
@@ -135,6 +158,10 @@ async def agent():
         promptResponses += f" Customer: {completion2.choices[0].text}\n\n"
 
         session["promptResponses"] = promptResponses
+
+        logger.info(f"Response from API: coach: {completion.choices[0].text}, customer: {completion2.choices[0].text}")
+
+        logger.info("Agent Response generated successfully")
 
         #return jsonify(session)
 
