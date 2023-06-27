@@ -31,10 +31,6 @@ Session(app)
 
 api_Key=os.getenv("api_Key")
 
-ag=""
-cust=""
-pro=""
-
 openai.api_key=api_Key
 
 #sess={
@@ -48,15 +44,17 @@ sess={"5ff70385-f7a4-4010-9bb0-36a1a948fb8a":{'id':'123'}}
 @app.route('/getSession', methods=['get'])
 async def getSession():
     session_name = str(uuid.uuid4())
+    session_name=request.cookies.get('session')
     sess[session_name] = {"session_id":"123"}
     logger.info("Session is successfully created")
     #return jsonify({"session_name": session_name, "session_data": sess[session_name]})
     
-    response=jsonify({"session_name": "5ff70385-f7a4-4010-9bb0-36a1a948fb8a", "session_data": sess[session_name]})
-    response.set_cookie('session', "5ff70385-f7a4-4010-9bb0-36a1a948fb8a")
-    session["sessionname"]="5ff70385-f7a4-4010-9bb0-36a1a948fb8a"
+    response=jsonify({"session_name": session_name, "session_data": sess[session_name]})
+    #response.set_cookie('session', "5ff70385-f7a4-4010-9bb0-36a1a948fb8a")
+    #session["sessionname"]="5ff70385-f7a4-4010-9bb0-36a1a948fb8a"
 
     logger.info(f"response: \n {response.json}")
+    logger.info(f"Cookies: {request.cookies.get('session')}")
     return response
 
 def wordCount(string):
@@ -92,6 +90,8 @@ async def customer():
     headers=request.headers
 
     logger.info(f"Headers sent to agent api : \n\n{headers}")
+
+
     data=request.json
     print(data)
     logger.info(f"Data Received as Input: {data}")
