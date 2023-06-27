@@ -124,7 +124,7 @@ async def customer():
             response = make_response(jsonify({"customer": completion.choices[0].text}))
 
             # Set the session cookie
-            response.set_cookie('session', session_name)
+            response.set_cookie('session', "aee7947f-bea7-436d-bd88-7a5bb2559fa5")
 
             return response
 
@@ -194,7 +194,7 @@ async def agent():
 
         #return jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text}).set_cookie('session',session_name)
         response=make_response(jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text}))
-        #response.set_cookie("session",session_name)
+        response.set_cookie("session","aee7947f-bea7-436d-bd88-7a5bb2559fa5")
         return(response)
 
     except Exception as e:
