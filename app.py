@@ -1,18 +1,12 @@
-from flask import Flask, session, request, jsonify,make_response
+from flask import Flask, session, request, jsonify
 from flask_session import Session
 import openai
 import uuid
 import os
 import logging
-from flask_cors import CORS
 
 
 app = Flask(__name__)
-
-#Added cross origin
-CORS(app)
-CORS(app, supports_credentials=True)
-
 app.secret_key = 'supersecretkey'  # replace with your own secret key
 app.config['SESSION_TYPE'] = 'filesystem'
 
@@ -30,7 +24,6 @@ logger.addHandler(handler)
 Session(app)
 
 api_Key=os.getenv("api_Key")
-
 openai.api_key=api_Key
 
 #sess={
@@ -47,6 +40,7 @@ async def getSession():
     session_name=request.cookies.get('session')
     sess[session_name] = {"session_id":"123"}
     logger.info("Session is successfully created")
+<<<<<<< HEAD
     #return jsonify({"session_name": session_name, "session_data": sess[session_name]})
     
     response=jsonify({"session_name": session_name, "session_data": sess[session_name]})
@@ -56,6 +50,11 @@ async def getSession():
     logger.info(f"response: \n {response.json}")
     logger.info(f"Cookies: {request.cookies.get('session')}")
     return response
+=======
+    return jsonify({"session_name": session_name, "session_data": sess[session_name]})
+
+
+>>>>>>> parent of 39b9afc (Added CORS)
 
 def wordCount(string):
     return len([w for w in string.split(' ') if w.strip()])
@@ -127,12 +126,12 @@ async def customer():
             cust=customerTemplate
             pro=promptResponses
             print(session)
-            logger.info(session.keys())
             #return jsonify(session)
             logger.info("Customer Response Generated Successfully")
 
-            #return jsonify({ "customer": completion.choices[0].text}).set_cookie('session',session_name)
+            return jsonify({ "customer": completion.choices[0].text})
         
+<<<<<<< HEAD
             # Create a response object
             response = jsonify({"customer": completion.choices[0].text})
 
@@ -141,6 +140,8 @@ async def customer():
 
             return response
 
+=======
+>>>>>>> parent of 39b9afc (Added CORS)
         except Exception as e:
             print(e)
             return({"status": "error", "message": "Failed to generate response."})
@@ -160,6 +161,7 @@ async def agent():
     data = request.json
     logger.info(f"Data Received as Input: {data}")
     chat = data["chat"]
+<<<<<<< HEAD
     #session_name=data["session_name"]
     
     #agentTemplate = session.get("agentTemplate")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
@@ -168,6 +170,11 @@ async def agent():
     agentTemplate=ag
     customerTemplate=cust
     promptResponses=pro
+=======
+    agentTemplate = session.get("agentTemplate")
+    customerTemplate = session.get("customerTemplate")
+    promptResponses = session.get("promptResponses", "")
+>>>>>>> parent of 39b9afc (Added CORS)
 
     prompt = f"{agentTemplate}\n\n{promptResponses} Agent: {chat}\n\nAI:"
     wc = wordCount(chat)
@@ -209,10 +216,14 @@ async def agent():
 
         #return jsonify(session)
 
+<<<<<<< HEAD
         #return jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text}).set_cookie('session',session_name)
         response=jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text})
         response.set_cookie("session","aee7947f-bea7-436d-bd88-7a5bb2559fa5")
         return(response)
+=======
+        return jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text})
+>>>>>>> parent of 39b9afc (Added CORS)
 
     except Exception as e:
         print(e)
