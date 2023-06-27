@@ -147,7 +147,7 @@ async def agent():
     data = request.json
     logger.info(f"Data Received as Input: {data}")
     chat = data["chat"]
-    session_name=data["session_name"]
+    #session_name=data["session_name"]
     agentTemplate = session.get("agentTemplate")
     customerTemplate = session.get("customerTemplate")
     promptResponses = session.get("promptResponses", "")
@@ -194,7 +194,7 @@ async def agent():
 
         #return jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text}).set_cookie('session',session_name)
         response=make_response(jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text}))
-        response.set_cookie("session",session_name)
+        #response.set_cookie("session",session_name)
         return(response)
 
     except Exception as e:
