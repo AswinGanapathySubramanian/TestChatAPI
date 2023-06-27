@@ -39,7 +39,7 @@ openai.api_key=api_Key
 #    }
 #}
 
-sess={}
+sess={"5ff70385-f7a4-4010-9bb0-36a1a948fb8a":{'id':'123'}}
 
 @app.route('/getSession', methods=['get'])
 async def getSession():
@@ -47,8 +47,12 @@ async def getSession():
     sess[session_name] = {"session_id":"123"}
     logger.info("Session is successfully created")
     #return jsonify({"session_name": session_name, "session_data": sess[session_name]})
-    response=make_response(jsonify({"session_name": session_name, "session_data": sess[session_name]}))
-    response.set_cookie('session', session_name)
+    
+    response=jsonify({"session_name": "5ff70385-f7a4-4010-9bb0-36a1a948fb8a", "session_data": sess[session_name]})
+    response.set_cookie('session', "5ff70385-f7a4-4010-9bb0-36a1a948fb8a")
+    session["sessionname"]="5ff70385-f7a4-4010-9bb0-36a1a948fb8a"
+
+    logger.info(f"response: \n {response.json}")
     return response
 
 def wordCount(string):
@@ -87,8 +91,10 @@ async def customer():
     data=request.json
     print(data)
     logger.info(f"Data Received as Input: {data}")
-    session_name=data["session_name"]
+    #session_name=data["session_name"]
     sessionid=data["session_id"]
+    #session_name=session.get("session_name")
+    session_name="5ff70385-f7a4-4010-9bb0-36a1a948fb8a"
     intent = data["intent"]
     #print(sess[sessionid])
     #print(sess)
@@ -110,9 +116,9 @@ async def customer():
             )
 
             promptResponses = f"Customer: {completion.choices[0].text}\n\n"
-            session["promptResponses"] = promptResponses
-            session["customerTemplate"] = customerTemplate
-            session["agentTemplate"] = agentTemplate
+            session["promptResponses"] = {session_name:promptResponses}
+            session["customerTemplate"] = {session_name:customerTemplate}
+            session["agentTemplate"] = {session_name:agentTemplate}
             print(session)
             logger.info(session.keys())
             #return jsonify(session)
@@ -121,7 +127,7 @@ async def customer():
             #return jsonify({ "customer": completion.choices[0].text}).set_cookie('session',session_name)
         
             # Create a response object
-            response = make_response(jsonify({"customer": completion.choices[0].text}))
+            response = jsonify({"customer": completion.choices[0].text})
 
             # Set the session cookie
             response.set_cookie('session', "aee7947f-bea7-436d-bd88-7a5bb2559fa5")
@@ -148,9 +154,9 @@ async def agent():
     logger.info(f"Data Received as Input: {data}")
     chat = data["chat"]
     #session_name=data["session_name"]
-    agentTemplate = session.get("agentTemplate")
-    customerTemplate = session.get("customerTemplate")
-    promptResponses = session.get("promptResponses", "")
+    agentTemplate = session.get("agentTemplate")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
+    customerTemplate = session.get("customerTemplate")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
+    promptResponses = session.get("promptResponses", "")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
 
     prompt = f"{agentTemplate}\n\n{promptResponses} Agent: {chat}\n\nAI:"
     wc = wordCount(chat)
@@ -184,7 +190,7 @@ async def agent():
 
         promptResponses += f" Customer: {completion2.choices[0].text}\n\n"
 
-        session["promptResponses"] = promptResponses
+        session["promptResponses"] = {"5ff70385-f7a4-4010-9bb0-36a1a948fb8a":promptResponses}
 
         logger.info(f"Response from API: coach: {completion.choices[0].text}, customer: {completion2.choices[0].text}")
 
@@ -193,7 +199,7 @@ async def agent():
         #return jsonify(session)
 
         #return jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text}).set_cookie('session',session_name)
-        response=make_response(jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text}))
+        response=jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text})
         response.set_cookie("session","aee7947f-bea7-436d-bd88-7a5bb2559fa5")
         return(response)
 
