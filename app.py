@@ -24,7 +24,6 @@ logger.addHandler(handler)
 Session(app)
 
 api_Key=os.getenv("api_Key")
-
 openai.api_key=api_Key
 
 #sess={
@@ -73,6 +72,10 @@ Customer:"
 @app.route('/customer', methods=['POST'])
 async def customer():
     logger.info("Customer api is invoked successfully")
+    logger.info("Headers received from endpoint \n\n")
+    headers=request.headers
+
+    logger.info(f"Headers sent to agent api : \n\n{headers}")
     data=request.json
     print(data)
     logger.info(f"Data Received as Input: {data}")
@@ -118,6 +121,12 @@ async def customer():
 @app.route('/agent', methods=['POST'])
 async def agent():
     logger.info("Agent Api Invoked successfully")
+    logger.info("Headers received from endpoint")
+    headers=request.headers
+
+    logger.info(f"Headers sent to agent api : \n\n{headers}")
+
+
     data = request.json
     logger.info(f"Data Received as Input: {data}")
     chat = data["chat"]
