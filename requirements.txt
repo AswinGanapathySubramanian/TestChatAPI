@@ -7,5 +7,6 @@ Flask>=2.2.2
 jinja2
 Flask-Session
 Flask[async]
+flask-cors
 
 
