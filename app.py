@@ -162,9 +162,9 @@ async def agent():
     chat = data["chat"]
     #session_name=data["session_name"]
     
-    agentTemplate = session.get("agentTemplate")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
-    customerTemplate = session.get("customerTemplate")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
-    promptResponses = session.get("promptResponses", "")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
+    #agentTemplate = session.get("agentTemplate")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
+    #customerTemplate = session.get("customerTemplate")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
+    #promptResponses = session.get("promptResponses", "")["5ff70385-f7a4-4010-9bb0-36a1a948fb8a"]
     agentTemplate=ag
     customerTemplate=cust
     promptResponses=pro
