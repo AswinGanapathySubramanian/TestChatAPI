@@ -1,12 +1,18 @@
-from flask import Flask, session, request, jsonify
+from flask import Flask, session, request, jsonify,make_response
 from flask_session import Session
 import openai
 import uuid
 import os
 import logging
+from flask_cors import CORS
 
 
 app = Flask(__name__)
+
+#Added cross origin
+CORS(app)
+CORS(app, supports_credentials=True)
+
 app.secret_key = 'supersecretkey'  # replace with your own secret key
 app.config['SESSION_TYPE'] = 'filesystem'
 
@@ -24,6 +30,7 @@ logger.addHandler(handler)
 Session(app)
 
 api_Key=os.getenv("api_Key")
+
 openai.api_key=api_Key
 
 #sess={
@@ -39,9 +46,10 @@ async def getSession():
     session_name = str(uuid.uuid4())
     sess[session_name] = {"session_id":"123"}
     logger.info("Session is successfully created")
-    return jsonify({"session_name": session_name, "session_data": sess[session_name]})
-
-
+    #return jsonify({"session_name": session_name, "session_data": sess[session_name]})
+    response=make_response(jsonify({"session_name": session_name, "session_data": sess[session_name]}))
+    response.set_cookie('session', session_name)
+    return response
 
 def wordCount(string):
     return len([w for w in string.split(' ') if w.strip()])
@@ -106,11 +114,20 @@ async def customer():
             session["customerTemplate"] = customerTemplate
             session["agentTemplate"] = agentTemplate
             print(session)
+            logger.info(session.keys())
             #return jsonify(session)
             logger.info("Customer Response Generated Successfully")
 
-            return jsonify({ "customer": completion.choices[0].text})
+            #return jsonify({ "customer": completion.choices[0].text}).set_cookie('session',session_name)
         
+            # Create a response object
+            response = make_response(jsonify({"customer": completion.choices[0].text}))
+
+            # Set the session cookie
+            response.set_cookie('session', session_name)
+
+            return response
+
         except Exception as e:
             print(e)
             return({"status": "error", "message": "Failed to generate response."})
@@ -130,6 +147,7 @@ async def agent():
     data = request.json
     logger.info(f"Data Received as Input: {data}")
     chat = data["chat"]
+    session_name=data["session_name"]
     agentTemplate = session.get("agentTemplate")
     customerTemplate = session.get("customerTemplate")
     promptResponses = session.get("promptResponses", "")
@@ -174,7 +192,10 @@ async def agent():
 
         #return jsonify(session)
 
-        return jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text})
+        #return jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text}).set_cookie('session',session_name)
+        response=make_response(jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text}))
+        response.set_cookie("session",session_name)
+        return(response)
 
     except Exception as e:
         print(e)
