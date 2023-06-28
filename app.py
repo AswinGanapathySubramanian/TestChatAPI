@@ -29,7 +29,7 @@ logger.addHandler(handler)
 
 Session(app)
 
-api_Key=os.getenv("api_Key")
+#api_Key=os.getenv("api_Key")
 
 openai.api_key=api_Key
 
@@ -95,7 +95,7 @@ async def customer():
     logger.info(f"Data Received as Input: {data}")
     session_name=data["session_name"]
     sessionid=data["session_id"]
-    session_name=session.get("session_name")
+    #session_name=session.get("session_name")
     #session_name="5ff70385-f7a4-4010-9bb0-36a1a948fb8a"
     intent = data["intent"]
     #print(sess[sessionid])
