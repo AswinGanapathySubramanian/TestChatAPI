@@ -28,16 +28,10 @@ logger.addHandler(handler)
 
 Session(app)
 
-api_Key=os.getenv("api_Key")
+#api_Key=os.getenv("api_Key")
+api_Key="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"
 openai.api_key=api_Key
 
-#sess={
-#    'session1':{
-#        'id':'123'
-#    }
-#}
-
-sess={}
 
 @app.route('/getSession', methods=['get'])
 async def getSession():

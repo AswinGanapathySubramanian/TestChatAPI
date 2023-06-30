@@ -8,5 +8,6 @@ jinja2
 Flask-Session
 Flask[async]
 flask-cors
+redis
 
 
