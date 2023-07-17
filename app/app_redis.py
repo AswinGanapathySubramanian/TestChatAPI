@@ -5,7 +5,9 @@ import uuid
 import os
 import logging
 from redis import Redis
-from flask_cors import CORS
+
+
+redis_host=os.getenv("redis_host")
 
 
 
@@ -15,9 +17,7 @@ app.config['SESSION_TYPE'] = 'redis'
 app.config['SESSION_REDIS'] = Redis(host='127.0.0.1', port=6379, password='')
 redis_client = Redis(host='127.0.0.1', port=6379, password='')
 
-#Added cross origin
-CORS(app)
-CORS(app, supports_credentials=True)
+
 
 # Initialize the logger
 logger = logging.getLogger(__name__)
@@ -35,6 +35,13 @@ Session(app)
 api_Key=os.getenv("api_Key")
 openai.api_key=api_Key
 
+#sess={
+#    'session1':{
+#        'id':'123'
+#    }
+#}
+
+sess={}
 
 @app.route('/getSession', methods=['get'])
 async def getSession():

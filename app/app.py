@@ -11,8 +11,8 @@ app.config['SESSION_TYPE'] = 'filesystem'
 
 Session(app)
 
-api_Key=os.getenv("api_Key")
-
+#api_Key=os.getenv("api_Key")
+api_Key="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"
 openai.api_key=api_Key
 
 #sess={
@@ -51,7 +51,7 @@ def getInitialPrompt(intent: str, isAgent: bool) -> str:
     elif intent == "Issues with Order":
         templateSpecifics = "enquiring the status of their order."
 
-    templateBase = f"{ 'You are an agent in a call center. Given the response of the agent, it is your job to write a better response' if isAgent else 'You are a customer having a call with contact center agent. You generate response for the customer based on the scenario' }.\n\n\
+    templateBase = f"{ 'You are an agent in a call center. Given the response of the agent, it is your job to write a better response for agents last response in a formal way based on the scenario.' if isAgent else 'You are a customer having a call with contact center agent. You generate response for the customer based on the scenario' }.\n\n\
 Scenario: Lets do a quick role play for a customer {templateSpecifics}.\n\n\
 Customer:"
 
