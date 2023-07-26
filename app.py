@@ -4,21 +4,21 @@ import openai
 import uuid
 import os
 import logging
+from redis import Redis
+
+
+redis_host=os.getenv("redis_host")
+redis_port=os.getenv("redis_port")
+redis_pwd=os.getenv("redis_pwd")
+
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # replace with your own secret key
-app.config['SESSION_TYPE'] = 'filesystem'  # Use file system for session storage
-Session(app)
+app.config['SESSION_TYPE'] = 'redis'
+app.config['SESSION_REDIS'] = Redis(host=redis_host, port=redis_port, password=redis_pwd,ssl=True)
+redis_client = Redis(host=redis_host, port=redis_port, password=redis_pwd,ssl=True)
 
-api_Key=os.getenv("api_Key")
-openai.api_key = api_Key
-#openai.api_base = "https://amplifai-openai.openai.azure.com/" # your endpoint should look like the following https://YOUR_RESOURCE_NAME.openai.azure.com/
-#openai.api_type = 'azure'
-#openai.api_version = '2023-05-15' # this may change in the future
 
-#deployment_name='AmplifAI-Chat' #This will correspond to the custom name you chose for your deployment when you deployed a model. 
-#deployment_name1="AmplifAI-Customer"
-#deployment_name2=""
 
 # Initialize the logger
 logger = logging.getLogger(__name__)
@@ -31,29 +31,29 @@ handler.setFormatter(formatter)
 
 logger.addHandler(handler)
 
+Session(app)
+
+api_Key=os.getenv("api_Key")
+
+openai.api_key=api_Key
 
 
-@app.route('/getSession', methods=['GET'])
-def getSession():
-    header=request.headers
+sess={}
+
+@app.route('/getSession', methods=['get'])
+async def getSession():
     session_name = str(uuid.uuid4())
     logger.info("Session is successfully created")
-    logger.info(session_name)
-    session[session_name] = {
-        "promptResponses": "X",
-        "customerTemplate": "Y",
-        "agentTemplate": "",
-        "scoringPrompt": ""
-    }
-    logger.info(session[session_name])
-    logger.info(f"Created Session: \n {session[session_name]}")
-    logger.info(f"session_name: {session_name}")
+    redis_key = f"session:{session_name}"
+    logger.info("Redis key is created")
+    redis_client.hmset(redis_key,{'Session Name':f'{session_name}','promptResponse':'','agentTemplate':'','customerTemplate':'','scoringPrompt':''})
+    logger.info("Session Stored in Redis")
     return jsonify({"session_name": session_name})
+
 
 
 def wordCount(string):
     return len([w for w in string.split(' ') if w.strip()])
-
 
 def getInitialPrompt(intent: str, isAgent: bool) -> str:
     templateSpecifics = ""
@@ -72,144 +72,151 @@ def getInitialPrompt(intent: str, isAgent: bool) -> str:
     elif intent == "Issues with Order":
         templateSpecifics = "enquiring the status of their order."
 
-    templateBase = f"{ 'You are an agent in a call center. Given the response of the agent, it is your job to write a better response for agents last response in a formal way based on the scenario.' if isAgent else 'You are a customer having a call with contact center agent. You generate response for the customer based on the scenario.' }\n\n\
+    templateBase = f"{ 'You are an agent in a call center. Given the response of the agent, it is your job to write a better response for agents last response in a formal way based on the scenario.' if isAgent else 'You are a customer having a call with contact center agent. You generate response for the customer based on the scenario' }.\n\n\
 Scenario: Lets do a quick role play for a customer {templateSpecifics}\n\n\
 Customer:"
 
     return templateBase
 
-
 @app.route('/customer', methods=['POST'])
-def customer():
-    logger.info("Customer API is invoked successfully")
-    data = request.json
+async def customer():
+    logger.info("Customer api is invoked successfully")
+    data=request.json
     logger.info(f"Data Received as Input: {data}")
-    session_name = data["session_name"]
-    #logger.info(f"Created Session: \n {session[session_name]}")
+    session_name=data["session_name"]
     intent = data["intent"]
-    logger.info(session)
-    #logger.info(f"session details: {session}")
-    #logger.info(f"session data present: {session[session_name]}")
-    if session_name not in session:
+    #Redis Key
+    redis_key = f"session:{session_name}"
+    logger.info("Checking if the session is available")
+    if redis_client.exists(redis_key):
+        #pulling all data from Redis
+        logger.info("Session is available\n\n")
+        logger.info("Pulling data of the session")
+        session_data = redis_client.hgetall(redis_key)
+
+        customerTemplate = getInitialPrompt(intent, False)
+        agentTemplate = getInitialPrompt(intent, True)
+
+        try:
+            completion = openai.Completion.create(
+                engine="text-davinci-003",
+                prompt=f"{customerTemplate}\n\n",
+                temperature=0.7,
+                max_tokens=100,
+                n = 1,
+                stop=None,
+                frequency_penalty=1,
+                presence_penalty=1
+            )
+
+            promptResponses = f"Customer: {completion.choices[0].text}\n\n"
+            
+            logger.info("Updating Session Data:")
+            redis_client.hset(redis_key, "promptResponse", promptResponses)
+            redis_client.hset(redis_key, "customerTemplate", customerTemplate)
+            redis_client.hset(redis_key,"agentTemplate",agentTemplate)
+            
+            logger.info(f'Data in Redis After Update: {redis_client.hgetall(redis_key)}')
+            logger.info("Customer Response Generated Successfully")
+            return jsonify({ "customer": completion.choices[0].text})
+        
+        except Exception as e:
+            print(e)
+            return({"status": "error", "message": "Failed to generate response."})
+    else:    
         return jsonify({'status': 'error', 'message': 'Invalid session ID.'})
 
-    customerTemplate = getInitialPrompt(intent, False)
-    agentTemplate = getInitialPrompt(intent, True)
-    logger.info(f"Customer Template created:\n {customerTemplate}")
-    logger.info(f"Agent Template created:\n {agentTemplate}")
 
-    try:
-        completion = openai.Completion.create(
-            model='text-davinci-003',
-            prompt=f"{customerTemplate}\n\n",
-            temperature=0.7,
-            max_tokens=100,
-            n=1,
-            stop=None,
-            frequency_penalty=1,
-            presence_penalty=1
-        )
+def scoring_Responses(prom:str) -> str:
+    prompt3=f'You are a training bot designed to help the agents improve their conversation with a customer. Based on the following interaction between the customer and the agent, give me scores on a scale of 8 for the following topics with reason. Greeting; Discovery; Solutioning.\n{prom}'
 
-        logger.info("Creating the prompt response:")
-
-        promptResponses = f"Customer: {completion.choices[0].text}\n\n"
-        logger.info(f"Prompt Response Generated: {promptResponses}")
-        session[session_name]["promptResponses"] = promptResponses
-        session[session_name]["customerTemplate"] = customerTemplate
-        session[session_name]["agentTemplate"] = agentTemplate
-
-        logger.info(f'Data in Session After Update: {session[session_name]}')
-        logger.info("Customer Response Generated Successfully")
-        return jsonify({"customer": completion.choices[0].text})
-
-    except Exception as e:
-        print(e)
-        return jsonify({"status": "error", "message": "Failed to generate response."})
-
-
-def scoring_Responses(prom: str) -> str:
-    prompt3 = f'You are a training bot designed to help the agents improve their conversation with a customer. Based on the following interaction between the customer and the agent, give me scores on a scale of 8 for the following topics with reason. Greeting; Discovery; Solutioning.\n{prom}'
-
-    completion3 = openai.Completion.create(
-        model='text-davinci-003',
-        prompt=f"{prompt3}\n\n",
-        temperature=0.7,
-        max_tokens=100,
-        frequency_penalty=1,
-        presence_penalty=1
-    )
-    return completion3.choices[0].text
+    completion3 =  openai.Completion.create(
+                model="text-davinci-003",
+                prompt=f"{prompt3}\n\n",
+                temperature=0.7,
+                max_tokens=100,
+                frequency_penalty=1,
+                presence_penalty=1
+            )
+    return(completion3.choices[0].text)
 
 
 @app.route('/agent', methods=['POST'])
-def agent():
-    logger.info("Agent API Invoked successfully")
+async def agent():
+    logger.info("Agent Api Invoked successfully")
     data = request.json
     logger.info(f"Data Received as Input: {data}")
     chat = data["chat"]
-    session_name = data["session_name"]
+    session_name=data["session_name"]
+    #Redis Key
+    redis_key = f"session:{session_name}"
+    logger.info("Checking if the session is available")
+    if redis_client.exists(redis_key):
+        logger.info(f"Redis Session is available\n\n")
+        #pulling data from Redis
+        session_data = redis_client.hgetall(redis_key)
+        promptResponse = session_data.get(b'promptResponse').decode('utf-8')
+        logger.info(f"promptResponses Retrieved from Redis: \n{promptResponse}")
+        agentTemplate= session_data.get(b'agentTemplate').decode('utf-8')
+        logger.info(f"agentTemplate Retrieved from Redis: \n{agentTemplate}")
+        customerTemplate= session_data.get(b"customerTemplate").decode('utf-8')
+        logger.info(f"customerTemplate Retrieved from Redis: \n{customerTemplate}")
+        scoringResponse=session_data.get(b"scoringPrompt").decode('utf-8')
+        logger.info(f"Scoring prompt Retrieved from Redis: {scoringResponse}")
+        scoringResponse+= f" Agent: {chat}\n\n"
+        scores=scoring_Responses(scoringResponse)
 
-    if session_name not in session:
-        return jsonify({'status': 'error', 'message': 'Invalid session ID.'})
+        logger.info("Generating prompt for better Response")
+        prompt = f"{agentTemplate}\n\n{promptResponse} Agent: {chat}\n\nAI:"
+                
+        wc = wordCount(chat)
 
-    promptResponse = session[session_name]["promptResponses"]
-    agentTemplate = session[session_name]["agentTemplate"]
-    customerTemplate = session[session_name]["customerTemplate"]
-    scoringResponse = session[session_name]["scoringPrompt"]
+        logger.info(f"Prompt to Generate agents' better way of responding: {prompt}")
 
-    scoringResponse += f" Agent: {chat}\n\n"
-    scores = scoring_Responses(scoringResponse)
+        try:
+            completion =  openai.Completion.create(
+                model="text-davinci-003",
+                prompt=f"{prompt}\n\n",
+                temperature=0.7,
+                max_tokens=100,
+                frequency_penalty=1,
+                presence_penalty=1
+            )
 
-    wc = wordCount(chat)
+            promptResponse += f" Agent: {completion.choices[0].text}\n\n"
 
-    prompt = f"{agentTemplate}\n\n{promptResponse} Agent: {chat}\n\nAI:"
+            prompt2 = f"{customerTemplate}\n\n{promptResponse} Customer:"
 
-    logger.info(f"Prompt to Generate agents' better way of responding: {prompt}")
+            logger.info(f"Prompt to Generate Customer Response: {prompt2}")
 
-    try:
-        completion = openai.Completion.create(
-            model='text-davinci-003',
-            prompt=f"{prompt}\n\n",
-            temperature=0.7,
-            max_tokens=100,
-            frequency_penalty=1,
-            presence_penalty=1
-        )
+            completion2 =  openai.Completion.create(
+                model="text-davinci-003",
+                prompt=f"{prompt2}\n\n",
+                temperature=0.7,
+                max_tokens=100,
+                frequency_penalty=1,
+                presence_penalty=1
+            )
 
-        promptResponse += f" Agent: {completion.choices[0].text}\n\n"
+            promptResponse += f" Customer: {completion2.choices[0].text}\n\n"
+            scoringResponse += f" Customer: {completion2.choices[0].text}\n\n"
 
-        ##Generating response for a customer
+            logger.info("Updating Redis")
+            #Updating data in Redis
+            redis_client.hset(redis_key, "promptResponse", promptResponse)
+            redis_client.hset(redis_key, "scoringPrompt", scoringResponse)
+            
+            logger.info("Redis Session Updated")
 
-        prompt2 = f"{customerTemplate}\n\n{promptResponse} Customer:"
+            return jsonify({"coach": completion.choices[0].text,"customer": completion2.choices[0].text, "score": scores})
 
-        logger.info(f"Prompt to Generate Customer Response: {prompt2}")
+        except Exception as e:
+            print(e)
+            return jsonify({"status": "error", "message": "Failed to generate response."})
 
-        completion2 = openai.Completion.create(
-            model='text-davinci-003',
-            prompt=f"{prompt2}\n\n",
-            temperature=0.7,
-            max_tokens=100,
-            frequency_penalty=1,
-            presence_penalty=1
-        )
 
-        promptResponse += f" Customer: {completion2.choices[0].text}\n\n"
-        scoringResponse += f" Customer: {completion2.choices[0].text}\n\n"
 
-        session[session_name]["promptResponses"] = promptResponse
-        session[session_name]["scoringPrompt"] = scoringResponse
 
-        logger.info("Session Updated")
-
-        return jsonify({
-            "coach": completion.choices[0].text,
-            "customer": completion2.choices[0].text,
-            "score": scores
-        })
-
-    except Exception as e:
-        print(e)
-        return jsonify({"status": "error", "message": "Failed to generate response."})
 
 
 if __name__ == '__main__':
